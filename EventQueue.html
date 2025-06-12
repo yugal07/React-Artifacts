@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Event Loop Visualization</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .event-loop-diagram {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto auto;
+            gap: 20px;
+            margin: 30px 0;
+            min-height: 600px;
+        }
+        
+        .component {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #dee2e6;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .component:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .component h3 {
+            margin-top: 0;
+            text-align: center;
+            color: #495057;
+            font-size: 1.2em;
+        }
+        
+        .call-stack {
+            border-left: 5px solid #dc3545;
+            grid-column: 1;
+            grid-row: 1 / 3;
+        }
+        
+        .web-apis {
+            border-left: 5px solid #ffc107;
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        .callback-queue {
+            border-left: 5px solid #28a745;
+            grid-column: 3;
+            grid-row: 1;
+        }
+        
+        .microtask-queue {
+            border-left: 5px solid #17a2b8;
+            grid-column: 3;
+            grid-row: 2;
+        }
+        
+        .event-loop {
+            border-left: 5px solid #6f42c1;
+            grid-column: 2;
+            grid-row: 2;
+        }
+        
+        .execution-context {
+            border-left: 5px solid #fd7e14;
+            grid-column: 1;
+            grid-row: 3;
+        }
+        
+        .queue-item {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .queue-item:hover {
+            transform: scale(1.02);
+        }
+        
+        .queue-item.executing {
+            border-color: #667eea;
+            background: #e8f0ff;
+            animation: pulse 1s infinite;
+        }
+        
+        .queue-item.completed {
+            border-color: #28a745;
+            background: #d4edda;
+            opacity: 0.7;
+        }
+        
+        .queue-item.waiting {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .arrow {
+            position: absolute;
+            font-size: 24px;
+            color: #667eea;
+            z-index: 10;
+        }
+        
+        .arrow-right {
+            right: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .arrow-down {
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%) rotate(90deg);
+        }
+        
+        .demo-controls {
+            text-align: center;
+            margin: 30px 0;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button.demo-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        button.clear-btn {
+            background: linear-gradient(45deg, #6c757d, #495057);
+            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+        }
+        
+        .execution-log {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .log-entry {
+            margin: 8px 0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+            border-left: 3px solid;
+        }
+        
+        .log-sync {
+            background: rgba(220, 53, 69, 0.15);
+            border-left-color: #dc3545;
+        }
+        
+        .log-async {
+            background: rgba(255, 193, 7, 0.15);
+            border-left-color: #ffc107;
+        }
+        
+        .log-callback {
+            background: rgba(40, 167, 69, 0.15);
+            border-left-color: #28a745;
+        }
+        
+        .log-microtask {
+            background: rgba(23, 162, 184, 0.15);
+            border-left-color: #17a2b8;
+        }
+        
+        .log-loop {
+            background: rgba(111, 66, 193, 0.15);
+            border-left-color: #6f42c1;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .code-examples {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin: 40px 0;
+        }
+        
+        .code-example {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .code-example h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        
+        .highlight {
+            background: #4a5568;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #68d391;
+        }
+        
+        .priority-diagram {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            border: 2px solid #dee2e6;
+        }
+        
+        .priority-levels {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+        }
+        
+        .priority-level {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            flex: 1;
+            margin: 0 10px;
+            border: 2px solid;
+            position: relative;
+        }
+        
+        .priority-1 { border-color: #dc3545; }
+        .priority-2 { border-color: #17a2b8; }
+        .priority-3 { border-color: #28a745; }
+        
+        .priority-arrow {
+            position: absolute;
+            right: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: #667eea;
+        }
+        
+        .phase-indicator {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .stats-panel {
+            background: linear-gradient(135deg, #e8f0ff, #f0f8ff);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 1200px) {
+            .event-loop-diagram {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto auto auto;
+            }
+            
+            .call-stack {
+                grid-column: 1;
+                grid-row: 1 / 3;
+            }
+            
+            .web-apis {
+                grid-column: 2;
+                grid-row: 1;
+            }
+            
+            .callback-queue {
+                grid-column: 2;
+                grid-row: 2;
+            }
+            
+            .microtask-queue {
+                grid-column: 1;
+                grid-row: 3;
+            }
+            
+            .event-loop {
+                grid-column: 2;
+                grid-row: 3;
+            }
+            
+            .execution-context {
+                grid-column: 1 / 3;
+                grid-row: 4;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .event-loop-diagram {
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(6, auto);
+            }
+            
+            .call-stack,
+            .web-apis,
+            .callback-queue,
+            .microtask-queue,
+            .event-loop,
+            .execution-context {
+                grid-column: 1;
+                grid-row: auto;
+            }
+            
+            .code-examples {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 JavaScript Event Loop Visualization</h1>
+        
+        <div class="demo-controls">
+            <button onclick="runSyncDemo()" class="demo-btn">Run Sync Code</button>
+            <button onclick="runAsyncDemo()" class="demo-btn">Run Async Code</button>
+            <button onclick="runPromiseDemo()" class="demo-btn">Run Promise Demo</button>
+            <button onclick="runComplexDemo()" class="demo-btn">Run Complex Demo</button>
+            <button onclick="clearVisualization()" class="clear-btn">Clear All</button>
+        </div>
+        
+        <div class="event-loop-diagram">
+            <div class="component call-stack">
+                <div class="phase-indicator">Phase 1</div>
+                <h3>📚 Call Stack</h3>
+                <p><strong>Main Thread</strong> - Where code executes</p>
+                <div id="callStackItems">
+                    <div class="queue-item" style="opacity: 0.5;">Click a demo button to see execution</div>
+                </div>
+                <div class="arrow arrow-right">→</div>
+            </div>
+            
+            <div class="component web-apis">
+                <div class="phase-indicator">Phase 2</div>
+                <h3>🌐 Web APIs</h3>
+                <p><strong>Browser/Node.js APIs</strong> - Timers, DOM, HTTP</p>
+                <div id="webApiItems">
+                    <div class="queue-item" style="opacity: 0.5;">setTimeout, fetch, DOM events</div>
+                </div>
+                <div class="arrow arrow-down">→</div>
+            </div>
+            
+            <div class="component callback-queue">
+                <div class="phase-indicator">Phase 4</div>
+                <h3>📋 Callback Queue</h3>
+                <p><strong>Macro Tasks</strong> - setTimeout, setInterval, DOM events</p>
+                <div id="callbackQueueItems">
+                    <div class="queue-item" style="opacity: 0.5;">Waiting for callbacks...</div>
+                </div>
+            </div>
+            
+            <div class="component microtask-queue">
+                <div class="phase-indicator">Phase 3</div>
+                <h3>⚡ Microtask Queue</h3>
+                <p><strong>High Priority</strong> - Promises, queueMicrotask</p>
+                <div id="microtaskQueueItems">
+                    <div class="queue-item" style="opacity: 0.5;">Promise.then, async/await</div>
+                </div>
+            </div>
+            
+            <div class="component event-loop">
+                <div class="phase-indicator">Controller</div>
+                <h3>🔄 Event Loop</h3>
+                <p><strong>Traffic Controller</strong></p>
+                <div style="text-align: center; margin: 20px 0;">
+                    <div id="loopStatus" style="font-size: 1.2em; font-weight: bold; color: #667eea;">
+                        Waiting for tasks...
+                    </div>
+                    <div style="margin-top: 10px; font-size: 0.9em; color: #6c757d;">
+                        Checks: Call Stack → Microtasks → Callbacks
+                    </div>
+                </div>
+            </div>
+            
+            <div class="component execution-context">
+                <h3>🎯 Current Execution</h3>
+                <div id="currentExecution" style="font-family: 'Courier New', monospace; background: white; padding: 15px; border-radius: 8px; border: 2px solid #dee2e6; min-height: 100px;">
+                    <div style="color: #6c757d; text-align: center; padding: 20px;">
+                        Click a demo button to see code execution in real-time
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="priority-diagram">
+            <h3>🎯 Execution Priority Order</h3>
+            <div class="priority-levels">
+                <div class="priority-level priority-1">
+                    <div class="priority-arrow">→</div>
+                    <h4>1. Call Stack</h4>
+                    <p>Synchronous code executes first</p>
+                </div>
+                <div class="priority-level priority-2">
+                    <div class="priority-arrow">→</div>
+                    <h4>2. Microtasks</h4>
+                    <p>Promises, async/await</p>
+                </div>
+                <div class="priority-level priority-3">
+                    <h4>3. Callbacks</h4>
+                    <p>setTimeout, DOM events</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-panel">
+            <div class="stat-item">
+                <div class="stat-number" id="syncCount">0</div>
+                <div class="stat-label">Sync Operations</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="asyncCount">0</div>
+                <div class="stat-label">Async Operations</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="microtaskCount">0</div>
+                <div class="stat-label">Microtasks</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="callbackCount">0</div>
+                <div class="stat-label">Callbacks</div>
+            </div>
+        </div>
+        
+        <div class="execution-log">
+            <div style="color: #68d391; margin-bottom: 15px; font-size: 16px; font-weight: bold;">
+                📝 Event Loop Execution Log
+            </div>
+            <div id="executionLog">
+                <div class="log-entry log-loop">🚀 Event Loop Visualization Ready - Click demo buttons to see execution!</div>
+            </div>
+        </div>
+        
+        <div class="code-examples">
+            <div class="code-example">
+                <h3>🏗️ Synchronous Execution</h3>
+                <div class="code-block">
+<span class="highlight">console.log('1');</span>
+<span class="highlight">console.log('2');</span>
+<span class="highlight">console.log('3');</span>
+
+// Output: 1, 2, 3 (in order)
+// All execute immediately on call stack
+                </div>
+            </div>
+            
+            <div class="code-example">
+                <h3>⏰ Asynchronous with setTimeout</h3>
+                <div class="code-block">
+<span class="highlight">console.log('1');</span>
+setTimeout(() => console.log('2'), 0);
+<span class="highlight">console.log('3');</span>
+
+// Output: 1, 3, 2
+// setTimeout goes to Web APIs → Callback Queue
+                </div>
+            </div>
+            
+            <div class="code-example">
+                <h3>⚡ Promises (Microtasks)</h3>
+                <div class="code-block">
+<span class="highlight">console.log('1');</span>
+Promise.resolve().then(() => console.log('2'));
+<span class="highlight">console.log('3');</span>
+
+// Output: 1, 3, 2  
+// Promise goes to Microtask Queue (higher priority)
+                </div>
+            </div>
+            
+            <div class="code-example">
+                <h3>🎯 Complex Execution Order</h3>
+                <div class="code-block">
+console.log('1');
+setTimeout(() => console.log('2'), 0);
+Promise.resolve().then(() => console.log('3'));
+console.log('4');
+
+// Output: 1, 4, 3, 2
+// Sync first, then microtasks, then callbacks
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let executionStep = 0;
+        let stats = {
+            sync: 0,
+            async: 0,
+            microtask: 0,
+            callback: 0
+        };
+        
+        function updateStats() {
+            document.getElementById('syncCount').textContent = stats.sync;
+            document.getElementById('asyncCount').textContent = stats.async;
+            document.getElementById('microtaskCount').textContent = stats.microtask;
+            document.getElementById('callbackCount').textContent = stats.callback;
+        }
+        
+        function addLogEntry(message, type = 'loop', delay = 0) {
+            setTimeout(() => {
+                const logContainer = document.getElementById('executionLog');
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                const timestamp = new Date().toLocaleTimeString();
+                entry.innerHTML = `<strong>${timestamp}:</strong> ${message}`;
+                logContainer.appendChild(entry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }, delay);
+        }
+        
+        function updateLoopStatus(status) {
+            document.getElementById('loopStatus').textContent = status;
+        }
+        
+        function updateCurrentExecution(code) {
+            document.getElementById('currentExecution').innerHTML = code;
+        }
+        
+        function addToQueue(queueId, item, className = 'queue-item') {
+            const queue = document.getElementById(queueId);
+            const element = document.createElement('div');
+            element.className = className;
+            element.textContent = item;
+            queue.appendChild(element);
+            return element;
+        }
+        
+        function clearQueue(queueId) {
+            const queue = document.getElementById(queueId);
+            queue.innerHTML = '';
+        }
+        
+        function runSyncDemo() {
+            clearVisualization();
+            updateLoopStatus('Executing sync code...');
+            updateCurrentExecution(`
+                <div style="color: #dc3545; font-weight: bold;">Synchronous Execution Demo</div>
+                <div style="margin-top: 10px;">
+                    console.log('Start');<br>
+                    console.log('Middle');<br>
+                    console.log('End');
+                </div>
+            `);
+            
+            // Add to call stack
+            const item1 = addToQueue('callStackItems', "console.log('Start')", 'queue-item executing');
+            addLogEntry("📚 Added 'console.log(Start)' to Call Stack", 'sync');
+            stats.sync++;
+            
+            setTimeout(() => {
+                item1.classList.remove('executing');
+                item1.classList.add('completed');
+                addLogEntry("✅ Executed: console.log('Start')", 'sync');
+                
+                const item2 = addToQueue('callStackItems', "console.log('Middle')", 'queue-item executing');
+                addLogEntry("📚 Added 'console.log(Middle)' to Call Stack", 'sync');
+                stats.sync++;
+                
+                setTimeout(() => {
+                    item2.classList.remove('executing');
+                    item2.classList.add('completed');
+                    addLogEntry("✅ Executed: console.log('Middle')", 'sync');
+                    
+                    const item3 = addToQueue('callStackItems', "console.log('End')", 'queue-item executing');
+                    addLogEntry("📚 Added 'console.log(End)' to Call Stack", 'sync');
+                    stats.sync++;
+                    
+                    setTimeout(() => {
+                        item3.classList.remove('executing');
+                        item3.classList.add('completed');
+                        addLogEntry("✅ Executed: console.log('End')", 'sync');
+                        addLogEntry("🏁 Synchronous execution complete!", 'sync');
+                        updateLoopStatus('Sync execution complete');
+                        updateStats();
+                    }, 800);
+                }, 800);
+            }, 800);
+        }
+        
+        function runAsyncDemo() {
+            clearVisualization();
+            updateLoopStatus('Processing async operations...');
+            updateCurrentExecution(`
+                <div style="color: #ffc107; font-weight: bold;">Asynchronous Execution Demo</div>
+                <div style="margin-top: 10px;">
+                    console.log('Start');<br>
+                    setTimeout(() => console.log('Async'), 1000);<br>
+                    console.log('End');
+                </div>
+            `);
+            
+            // Sync execution first
+            const syncItem1 = addToQueue('callStackItems', "console.log('Start')", 'queue-item executing');
+            addLogEntry("📚 Executing: console.log('Start')", 'sync');
+            stats.sync++;
+            
+            setTimeout(() => {
+                syncItem1.classList.remove('executing');
+                syncItem1.classList.add('completed');
+                
+                // setTimeout goes to Web APIs
+                const webApiItem = addToQueue('webApiItems', "setTimeout(..., 1000)", 'queue-item waiting');
+                addLogEntry("🌐 setTimeout sent to Web APIs", 'async');
+                stats.async++;
+                
+                // Continue with sync code
+                const syncItem2 = addToQueue('callStackItems', "console.log('End')", 'queue-item executing');
+                addLogEntry("📚 Executing: console.log('End')", 'sync');
+                stats.sync++;
+                
+                setTimeout(() => {
+                    syncItem2.classList.remove('executing');
+                    syncItem2.classList.add('completed');
+                    addLogEntry("✅ Call stack empty - Event Loop checking queues", 'loop');
+                    
+                    // Timer completes - move to callback queue
+                    setTimeout(() => {
+                        webApiItem.remove();
+                        const callbackItem = addToQueue('callbackQueueItems', "() => console.log('Async')", 'queue-item waiting');
+                        addLogEntry("📋 Timer completed - callback moved to Callback Queue", 'callback');
+                        stats.callback++;
+                        
+                        setTimeout(() => {
+                            callbackItem.classList.add('executing');
+                            addLogEntry("🔄 Event Loop: Moving callback to Call Stack", 'loop');
+                            
+                            setTimeout(() => {
+                                callbackItem.remove();
+                                const execItem = addToQueue('callStackItems', "console.log('Async')", 'queue-item executing');
+                                
+                                setTimeout(() => {
+                                    execItem.classList.remove('executing');
+                                    execItem.classList.add('completed');
+                                    addLogEntry("✅ Executed: console.log('Async')", 'callback');
+                                    addLogEntry("🏁 Async execution complete!", 'loop');
+                                    updateLoopStatus('Async execution complete');
+                                    updateStats();
+                                }, 500);
+                            }, 500);
+                        }, 800);
+                    }, 1000);
+                }, 800);
+            }, 800);
+        }
+        
+        function runPromiseDemo() {
+            clearVisualization();
+            updateLoopStatus('Processing promises...');
+            updateCurrentExecution(`
+                <div style="color: #17a2b8; font-weight: bold;">Promise Execution Demo</div>
+                <div style="margin-top: 10px;">
+                    console.log('Start');<br>
+                    Promise.resolve().then(() => console.log('Promise'));<br>
+                    console.log('End');
+                </div>
+            `);
+            
+            // Sync execution
+            const syncItem1 = addToQueue('callStackItems', "console.log('Start')", 'queue-item executing');
+            addLogEntry("📚 Executing: console.log('Start')", 'sync');
+            stats.sync++;
+            
+            setTimeout(() => {
+                syncItem1.classList.remove('executing');
+                syncItem1.classList.add('completed');
+                
+                // Promise goes to microtask queue
+                const microtaskItem = addToQueue('microtaskQueueItems', "() => console.log('Promise')", 'queue-item waiting');
+                addLogEntry("⚡ Promise.then added to Microtask Queue", 'microtask');
+                stats.microtask++;
+                
+                const syncItem2 = addToQueue('callStackItems', "console.log('End')", 'queue-item executing');
+                addLogEntry("📚 Executing: console.log('End')", 'sync');
+                stats.sync++;
+                
+                setTimeout(() => {
+                    syncItem2.classList.remove('executing');
+                    syncItem2.classList.add('completed');
+                    addLogEntry("✅ Call stack empty - Event Loop checking Microtask Queue first!", 'loop');
+                    
+                    setTimeout(() => {
+                        microtaskItem.classList.add('executing');
+                        addLogEntry("🔄 Event Loop: Processing microtask (HIGH PRIORITY)", 'loop');
+                        
+                        setTimeout(() => {
+                            microtaskItem.remove();
+                            const execItem = addToQueue('callStackItems', "console.log('Promise')", 'queue-item executing');
+                            
+                            setTimeout(() => {
+                                execItem.classList.remove('executing');
+                                execItem.classList.add('completed');
+                                addLogEntry("✅ Executed: console.log('Promise')", 'microtask');
+                                addLogEntry("🏁 Promise execution complete!", 'loop');
+                                updateLoopStatus('Promise execution complete');
+                                updateStats();
+                            }, 500);
+                        }, 500);
+                    }, 800);
+                }, 800);
+            }, 800);
+        }
+        
+        function runComplexDemo() {
+            clearVisualization();
+            updateLoopStatus('Processing complex execution...');
+            updateCurrentExecution(`
+                <div style="color: #6f42c1; font-weight: bold;">Complex Execution Demo</div>
+                <div style="margin-top: 10px;">
+                    console.log('1');<br>
+                    setTimeout(() => console.log('2'), 0);<br>
+                    Promise.resolve().then(() => console.log('3'));<br>
+                    console.log('4');
+                </div>
+            `);
+            
+            let step = 0;
+            
+            // Step 1: console.log('1')
+            const sync1 = addToQueue('callStackItems', "console.log('1')", 'queue-item executing');
+            addLogEntry("📚 Executing: console.log('1')", 'sync');
+            stats.sync++;
+            
+            setTimeout(() => {
+                sync1.classList.remove('executing');
+                sync1.classList.add('completed');
+                
+                // Step 2: setTimeout goes to Web APIs
+                const webApi = addToQueue('webApiItems', "setTimeout(..., 0)", 'queue-item waiting');
+                addLogEntry("🌐 setTimeout sent to Web APIs", 'async');
+                stats.async++;
+                
+                // Step 3: Promise goes to microtask queue
+                const microtask = addToQueue('microtaskQueueItems', "() => console.log('3')", 'queue-item waiting');
+                addLogEntry("⚡ Promise.then added to Microtask Queue", 'microtask');
+                stats.microtask++;
+                
+                // Step 4: console.log('4')
+                const sync2 = addToQueue('callStackItems', "console.log('4')", 'queue-item executing');
+                addLogEntry("📚 Executing: console.log('4')", 'sync');
+                stats.sync++;
+                
+                setTimeout(() => {
+                    sync2.classList.remove('executing');
+                    sync2.classList.add('completed');
+                    addLogEntry("✅ Synchronous code complete - Call stack empty", 'sync');
+                    
+                    // setTimeout completes and moves to callback queue
+                    setTimeout(() => {
+                        webApi.remove();
+                        const callback = addToQueue('callbackQueueItems', "() => console.log('2')", 'queue-item waiting');
+                        addLogEntry("📋 setTimeout completed - callback moved to Callback Queue", 'callback');
+                        stats.callback++;
+                        
+                        // Event loop checks microtasks first!
+                        setTimeout(() => {
+                            addLogEntry("🔄 Event Loop: Checking Microtask Queue first (higher priority)", 'loop');
+                            microtask.classList.add('executing');
+                            
+                            setTimeout(() => {
+                                microtask.remove();
+                                const execMicro = addToQueue('callStackItems', "console.log('3')", 'queue-item executing');
+                                
+                                setTimeout(() => {
+                                    execMicro.classList.remove('executing');
+                                    execMicro.classList.add('completed');
+                                    addLogEntry("✅ Executed: console.log('3') - Microtask complete", 'microtask');
+                                    
+                                    // Now process callback queue
+                                    setTimeout(() => {
+                                        addLogEntry("🔄 Event Loop: Now checking Callback Queue", 'loop');
+                                        callback.classList.add('executing');
+                                        
+                                        setTimeout(() => {
+                                            callback.remove();
+                                            const execCallback = addToQueue('callStackItems', "console.log('2')", 'queue-item executing');
+                                            
+                                            setTimeout(() => {
+                                                execCallback.classList.remove('executing');
+                                                execCallback.classList.add('completed');
+                                                addLogEntry("✅ Executed: console.log('2') - Callback complete", 'callback');
+                                                addLogEntry("🏁 Complex execution complete! Order: 1, 4, 3, 2", 'loop');
+                                                updateLoopStatus('Complex execution complete');
+                                                updateStats();
+                                            }, 500);
+                                        }, 500);
+                                    }, 800);
+                                }, 500);
+                            }, 500);
+                        }, 800);
+                    }, 800);
+                }, 800);
+            }, 800);
+        }
+        
+        function clearVisualization() {
+            clearQueue('callStackItems');
+            clearQueue('webApiItems');
+            clearQueue('callbackQueueItems');
+            clearQueue('microtaskQueueItems');
+            
+            updateLoopStatus('Waiting for tasks...');
+            updateCurrentExecution(`
+                <div style="color: #6c757d; text-align: center; padding: 20px;">
+                    Click a demo button to see code execution in real-time
+                </div>
+            `);
+            
+            document.getElementById('executionLog').innerHTML = `
+                <div style="color: #68d391; margin-bottom: 15px; font-size: 16px; font-weight: bold;">
+                    📝 Event Loop Execution Log
+                </div>
+                <div class="log-entry log-loop">🧹 Visualization cleared - Ready for new demo!</div>
+            `;
+            
+            stats = { sync: 0, async: 0, microtask: 0, callback: 0 };
+            updateStats();
+        }
+        
+        // Initialize stats
+        updateStats();
+    </script>
+</body>
+</html>
