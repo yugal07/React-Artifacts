@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>useEffect Hook Playground</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .patterns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        
+        .pattern-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 5px solid #667eea;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .pattern-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .pattern-card h3 {
+            margin-top: 0;
+            color: #495057;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .pattern-icon {
+            font-size: 1.5em;
+        }
+        
+        .code-example {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            position: relative;
+        }
+        
+        .highlight {
+            background: #4a5568;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #68d391;
+        }
+        
+        .demo-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .demo-controls {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button.secondary {
+            background: linear-gradient(45deg, #6c757d, #495057);
+            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+        }
+        
+        button.danger {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+        
+        .log-container {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+            border-left: 3px solid;
+        }
+        
+        .log-mount {
+            background: rgba(40, 167, 69, 0.15);
+            border-left-color: #28a745;
+        }
+        
+        .log-update {
+            background: rgba(255, 193, 7, 0.15);
+            border-left-color: #ffc107;
+        }
+        
+        .log-cleanup {
+            background: rgba(220, 53, 69, 0.15);
+            border-left-color: #dc3545;
+        }
+        
+        .log-effect {
+            background: rgba(102, 126, 234, 0.15);
+            border-left-color: #667eea;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .interactive-demo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 25px 0;
+        }
+        
+        .demo-component {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .demo-component.active {
+            border-color: #28a745;
+            background: #f8fff8;
+        }
+        
+        .demo-component.destroyed {
+            border-color: #dc3545;
+            background: #fff8f8;
+            opacity: 0.7;
+        }
+        
+        .component-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 15px;
+        }
+        
+        .counter-display {
+            font-size: 2em;
+            color: #667eea;
+            margin: 15px 0;
+        }
+        
+        .status-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #6c757d;
+        }
+        
+        .status-indicator.active {
+            background: #28a745;
+            animation: pulse 1s infinite;
+        }
+        
+        .status-indicator.updating {
+            background: #ffc107;
+            animation: pulse 0.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .dependency-demo {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 2px solid #dee2e6;
+        }
+        
+        .dependency-controls {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        input, select {
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .comparison-table th {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .best-practices {
+            background: #e8f5e8;
+            border: 2px solid #28a745;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .best-practices h3 {
+            color: #155724;
+            margin-top: 0;
+        }
+        
+        .best-practices ul {
+            color: #155724;
+        }
+        
+        .common-mistakes {
+            background: #ffe8e8;
+            border: 2px solid #dc3545;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .common-mistakes h3 {
+            color: #721c24;
+            margin-top: 0;
+        }
+        
+        .common-mistakes ul {
+            color: #721c24;
+        }
+        
+        @media (max-width: 768px) {
+            .patterns-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .interactive-demo {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-controls {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎣 useEffect Hook Deep Dive</h1>
+        
+        <div class="demo-section">
+            <h3>🎮 Interactive useEffect Demo</h3>
+            
+            <div class="interactive-demo">
+                <div class="demo-component" id="component1">
+                    <div class="status-indicator" id="status1"></div>
+                    <div class="component-title">Counter Component</div>
+                    <div class="counter-display" id="counter1">0</div>
+                    <div class="demo-controls">
+                        <button onclick="incrementCounter(1)">Increment</button>
+                        <button onclick="resetCounter(1)" class="secondary">Reset</button>
+                    </div>
+                </div>
+                
+                <div class="demo-component" id="component2">
+                    <div class="status-indicator" id="status2"></div>
+                    <div class="component-title">Timer Component</div>
+                    <div class="counter-display" id="timer">0</div>
+                    <div class="demo-controls">
+                        <button onclick="startTimer()" id="timerBtn">Start Timer</button>
+                        <button onclick="stopTimer()" class="danger">Stop Timer</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-controls">
+                <button onclick="mountComponents()">Mount Components</button>
+                <button onclick="unmountComponents()" class="danger">Unmount Components</button>
+                <button onclick="clearLog()" class="secondary">Clear Log</button>
+            </div>
+            
+            <div class="log-container" id="logContainer">
+                <div style="color: #68d391; margin-bottom: 10px;">📝 useEffect Execution Log:</div>
+            </div>
+        </div>
+        
+        <div class="patterns-grid">
+            <div class="pattern-card">
+                <h3><span class="pattern-icon">🏗️</span>Mount Effect (componentDidMount)</h3>
+                <div class="code-example">
+<span class="highlight">useEffect(() => {</span>
+  console.log('Component mounted');
+  // API calls, subscriptions, etc.
+  fetchData();
+<span class="highlight">}, []); // Empty array = run once</span>
+                </div>
+                <p><strong>When:</strong> Runs once after first render</p>
+                <p><strong>Use for:</strong> API calls, subscriptions, DOM setup</p>
+            </div>
+            
+            <div class="pattern-card">
+                <h3><span class="pattern-icon">🔄</span>Update Effect (componentDidUpdate)</h3>
+                <div class="code-example">
+<span class="highlight">useEffect(() => {</span>
+  console.log('Count changed:', count);
+  document.title = `Count: ${count}`;
+<span class="highlight">}, [count]); // Runs when count changes</span>
+                </div>
+                <p><strong>When:</strong> Runs when dependencies change</p>
+                <p><strong>Use for:</strong> Responding to state/prop changes</p>
+            </div>
+            
+            <div class="pattern-card">
+                <h3><span class="pattern-icon">🧹</span>Cleanup Effect (componentWillUnmount)</h3>
+                <div class="code-example">
+<span class="highlight">useEffect(() => {</span>
+  const timer = setInterval(() => tick(), 1000);
+  
+  <span class="highlight">return () => {</span>
+    clearInterval(timer); // Cleanup
+  };
+}, []);
+                </div>
+                <p><strong>When:</strong> Cleanup function runs before unmount</p>
+                <p><strong>Use for:</strong> Clearing timers, removing listeners</p>
+            </div>
+            
+            <div class="pattern-card">
+                <h3><span class="pattern-icon">🎯</span>Conditional Effect</h3>
+                <div class="code-example">
+<span class="highlight">useEffect(() => {</span>
+  if (userId) {
+    fetchUserData(userId);
+  }
+<span class="highlight">}, [userId]); // Only runs when userId exists</span>
+                </div>
+                <p><strong>When:</strong> Runs only when condition is met</p>
+                <p><strong>Use for:</strong> Conditional API calls, validations</p>
+            </div>
+            
+            <div class="pattern-card">
+                <h3><span class="pattern-icon">♻️</span>Every Render Effect</h3>
+                <div class="code-example">
+<span class="highlight">useEffect(() => {</span>
+  console.log('Component rendered');
+  updateAnalytics();
+<span class="highlight">}); // No dependency array = every render</span>
+                </div>
+                <p><strong>When:</strong> Runs after every render</p>
+                <p><strong>⚠️ Warning:</strong> Can cause performance issues</p>
+            </div>
+            
+            <div class="pattern-card">
+                <h3><span class="pattern-icon">🔀</span>Multiple Effects</h3>
+                <div class="code-example">
+<span class="highlight">// Separate concerns</span>
+useEffect(() => {
+  fetchUserData();
+}, [userId]);
+
+useEffect(() => {
+  updatePageTitle();
+}, [title]);
+                </div>
+                <p><strong>When:</strong> Different concerns, different dependencies</p>
+                <p><strong>Best Practice:</strong> One effect per concern</p>
+            </div>
+        </div>
+        
+        <div class="dependency-demo">
+            <h3>🎯 Dependency Array Interactive Demo</h3>
+            <div class="dependency-controls">
+                <label>
+                    Name: <input type="text" id="nameInput" placeholder="Enter name" onkeyup="updateName()">
+                </label>
+                <label>
+                    Age: <input type="number" id="ageInput" placeholder="Enter age" onchange="updateAge()">
+                </label>
+                <label>
+                    Effect Type: 
+                    <select id="effectType" onchange="changeEffectType()">
+                        <option value="none">No Effect</option>
+                        <option value="empty">Empty Dependencies []</option>
+                        <option value="name">Watch Name [name]</option>
+                        <option value="age">Watch Age [age]</option>
+                        <option value="both">Watch Both [name, age]</option>
+                        <option value="all">No Dependencies (every render)</option>
+                    </select>
+                </label>
+            </div>
+            <div style="text-align: center; margin: 20px 0;">
+                <strong>Current Values:</strong> Name: "<span id="currentName">-</span>", Age: <span id="currentAge">-</span>
+            </div>
+        </div>
+        
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Dependency Array</th>
+                    <th>When Effect Runs</th>
+                    <th>Class Component Equivalent</th>
+                    <th>Use Case</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>[]</code></td>
+                    <td>Once after mount</td>
+                    <td>componentDidMount</td>
+                    <td>API calls, subscriptions</td>
+                </tr>
+                <tr>
+                    <td><code>[value]</code></td>
+                    <td>When value changes</td>
+                    <td>componentDidUpdate</td>
+                    <td>Respond to specific changes</td>
+                </tr>
+                <tr>
+                    <td><code>[a, b, c]</code></td>
+                    <td>When any value changes</td>
+                    <td>componentDidUpdate</td>
+                    <td>Multiple dependencies</td>
+                </tr>
+                <tr>
+                    <td>No array</td>
+                    <td>After every render</td>
+                    <td>componentDidUpdate (always)</td>
+                    <td>⚠️ Usually not recommended</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="best-practices">
+            <h3>✅ Best Practices</h3>
+            <ul>
+                <li><strong>Always include dependencies:</strong> Include all values from component scope used inside effect</li>
+                <li><strong>Separate concerns:</strong> Use multiple useEffect hooks for different purposes</li>
+                <li><strong>Clean up subscriptions:</strong> Always return cleanup function for timers, listeners, subscriptions</li>
+                <li><strong>Use useCallback/useMemo:</strong> For expensive computations or stable function references</li>
+                <li><strong>Avoid infinite loops:</strong> Be careful with object/array dependencies</li>
+            </ul>
+        </div>
+        
+        <div class="common-mistakes">
+            <h3>❌ Common Mistakes</h3>
+            <ul>
+                <li><strong>Missing dependencies:</strong> Not including all used values in dependency array</li>
+                <li><strong>Infinite loops:</strong> Creating new objects/arrays in dependency array</li>
+                <li><strong>Not cleaning up:</strong> Forgetting to clear timers, remove listeners</li>
+                <li><strong>Wrong dependency array:</strong> Using empty array when you need to respond to changes</li>
+                <li><strong>Too many effects:</strong> Running expensive operations on every render</li>
+            </ul>
+        </div>
+        
+        <div class="demo-section">
+            <h3>💡 Pro Tips</h3>
+            <div class="code-example">
+<span class="highlight">// Tip 1: Use multiple effects for different concerns</span>
+useEffect(() => {
+  // Data fetching
+  fetchUserData();
+}, [userId]);
+
+useEffect(() => {
+  // Document title
+  document.title = `User: ${user?.name}`;
+}, [user?.name]);
+
+<span class="highlight">// Tip 2: Custom hooks for reusable effects</span>
+function useWindowSize() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  
+  useEffect(() => {
+    const updateSize = () => {
+      setSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    
+    window.addEventListener('resize', updateSize);
+    updateSize();
+    
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+  
+  return size;
+}
+
+<span class="highlight">// Tip 3: Conditional effects</span>
+useEffect(() => {
+  if (shouldFetch && userId) {
+    fetchUserData(userId);
+  }
+}, [shouldFetch, userId]);
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let counter1 = 0;
+        let timerValue = 0;
+        let timerInterval = null;
+        let componentsMounted = false;
+        let currentName = '';
+        let currentAge = '';
+        let renderCount = 0;
+        
+        function addLogEntry(message, type = 'effect') {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<strong>${timestamp}:</strong> ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function updateStatusIndicator(id, status) {
+            const indicator = document.getElementById(`status${id}`);
+            indicator.className = `status-indicator ${status}`;
+        }
+        
+        function mountComponents() {
+            if (componentsMounted) return;
+            
+            componentsMounted = true;
+            counter1 = 0;
+            timerValue = 0;
+            
+            // Update UI
+            document.getElementById('component1').classList.add('active');
+            document.getElementById('component2').classList.add('active');
+            document.getElementById('counter1').textContent = counter1;
+            document.getElementById('timer').textContent = timerValue;
+            
+            updateStatusIndicator(1, 'active');
+            updateStatusIndicator(2, 'active');
+            
+            // Simulate useEffect with empty dependency array
+            addLogEntry('🏗️ useEffect(() => { console.log("Components mounted"); }, [])', 'mount');
+            addLogEntry('🎯 Setting up event listeners and initial state', 'mount');
+            
+            // Simulate useEffect for counter
+            addLogEntry('🔄 useEffect(() => { document.title = `Counter: ${counter}`; }, [counter])', 'update');
+        }
+        
+        function unmountComponents() {
+            if (!componentsMounted) return;
+            
+            componentsMounted = false;
+            
+            // Cleanup
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            
+            // Update UI
+            document.getElementById('component1').classList.remove('active');
+            document.getElementById('component2').classList.remove('active');
+            document.getElementById('component1').classList.add('destroyed');
+            document.getElementById('component2').classList.add('destroyed');
+            
+            updateStatusIndicator(1, '');
+            updateStatusIndicator(2, '');
+            
+            // Simulate cleanup
+            addLogEntry('🧹 useEffect cleanup functions running', 'cleanup');
+            addLogEntry('🗑️ clearInterval(timerInterval)', 'cleanup');
+            addLogEntry('🚮 removeEventListener calls', 'cleanup');
+            addLogEntry('💀 Components unmounted', 'cleanup');
+            
+            setTimeout(() => {
+                document.getElementById('component1').classList.remove('destroyed');
+                document.getElementById('component2').classList.remove('destroyed');
+            }, 1000);
+        }
+        
+        function incrementCounter(id) {
+            if (!componentsMounted) {
+                addLogEntry('❌ Component not mounted - cannot increment', 'effect');
+                return;
+            }
+            
+            counter1++;
+            document.getElementById('counter1').textContent = counter1;
+            updateStatusIndicator(1, 'updating');
+            
+            // Simulate useEffect for counter change
+            addLogEntry(`🔄 useEffect(() => { updateTitle(); }, [count]) - count changed to ${counter1}`, 'update');
+            addLogEntry(`📊 Document title updated: "Counter: ${counter1}"`, 'effect');
+            
+            setTimeout(() => updateStatusIndicator(1, 'active'), 500);
+        }
+        
+        function resetCounter(id) {
+            if (!componentsMounted) return;
+            
+            counter1 = 0;
+            document.getElementById('counter1').textContent = counter1;
+            updateStatusIndicator(1, 'updating');
+            
+            addLogEntry('🔄 Counter reset - useEffect triggered', 'update');
+            
+            setTimeout(() => updateStatusIndicator(1, 'active'), 500);
+        }
+        
+        function startTimer() {
+            if (!componentsMounted || timerInterval) return;
+            
+            timerInterval = setInterval(() => {
+                timerValue++;
+                document.getElementById('timer').textContent = timerValue;
+                updateStatusIndicator(2, 'updating');
+                
+                if (timerValue % 5 === 0) {
+                    addLogEntry(`⏰ Timer tick: ${timerValue} (useEffect triggered every 5 seconds)`, 'effect');
+                }
+                
+                setTimeout(() => updateStatusIndicator(2, 'active'), 200);
+            }, 1000);
+            
+            document.getElementById('timerBtn').textContent = 'Timer Running...';
+            document.getElementById('timerBtn').disabled = true;
+            
+            addLogEntry('⏰ setInterval started - useEffect with cleanup', 'mount');
+        }
+        
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                document.getElementById('timerBtn').textContent = 'Start Timer';
+                document.getElementById('timerBtn').disabled = false;
+                
+                addLogEntry('🛑 Timer stopped - cleanup function executed', 'cleanup');
+            }
+        }
+        
+        function updateName() {
+            const newName = document.getElementById('nameInput').value;
+            const oldName = currentName;
+            currentName = newName;
+            
+            document.getElementById('currentName').textContent = newName || '-';
+            
+            const effectType = document.getElementById('effectType').value;
+            renderCount++;
+            
+            if (effectType === 'name' || effectType === 'both') {
+                addLogEntry(`🔄 useEffect triggered - name changed from "${oldName}" to "${newName}"`, 'update');
+            } else if (effectType === 'all') {
+                addLogEntry(`♻️ useEffect (no dependencies) - render #${renderCount}`, 'effect');
+            }
+        }
+        
+        function updateAge() {
+            const newAge = document.getElementById('ageInput').value;
+            const oldAge = currentAge;
+            currentAge = newAge;
+            
+            document.getElementById('currentAge').textContent = newAge || '-';
+            
+            const effectType = document.getElementById('effectType').value;
+            renderCount++;
+            
+            if (effectType === 'age' || effectType === 'both') {
+                addLogEntry(`🔄 useEffect triggered - age changed from "${oldAge}" to "${newAge}"`, 'update');
+            } else if (effectType === 'all') {
+                addLogEntry(`♻️ useEffect (no dependencies) - render #${renderCount}`, 'effect');
+            }
+        }
+        
+        function changeEffectType() {
+            const effectType = document.getElementById('effectType').value;
+            renderCount++;
+            
+            switch (effectType) {
+                case 'empty':
+                    addLogEntry('🏗️ useEffect(() => {}, []) - will only run once on mount', 'mount');
+                    break;
+                case 'name':
+                    addLogEntry('🎯 useEffect(() => {}, [name]) - watching name changes', 'effect');
+                    break;
+                case 'age':
+                    addLogEntry('🎯 useEffect(() => {}, [age]) - watching age changes', 'effect');
+                    break;
+                case 'both':
+                    addLogEntry('🎯 useEffect(() => {}, [name, age]) - watching both name and age', 'effect');
+                    break;
+                case 'all':
+                    addLogEntry('⚠️ useEffect(() => {}) - NO dependencies, runs every render!', 'effect');
+                    break;
+                case 'none':
+                    addLogEntry('🚫 No useEffect active', 'effect');
+                    break;
+            }
+        }
+        
+        function clearLog() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '<div style="color: #68d391; margin-bottom: 10px;">📝 useEffect Execution Log:</div>';
+        }
+        
+        // Initialize
+        addLogEntry('🚀 Welcome to useEffect Playground! Try mounting components and interacting with them.', 'effect');
+    </script>
+</body>
+</html>
