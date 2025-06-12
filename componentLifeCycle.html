@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React Component Lifecycle</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .lifecycle-diagram {
+            display: flex;
+            justify-content: space-around;
+            margin: 40px 0;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .phase {
+            background: #f8f9fa;
+            border-radius: 20px;
+            padding: 25px;
+            min-width: 300px;
+            flex: 1;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .phase:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .mounting {
+            border-left: 6px solid #28a745;
+        }
+        
+        .updating {
+            border-left: 6px solid #ffc107;
+        }
+        
+        .unmounting {
+            border-left: 6px solid #dc3545;
+        }
+        
+        .phase h3 {
+            text-align: center;
+            margin-top: 0;
+            font-size: 1.4em;
+            color: #495057;
+        }
+        
+        .phase-icon {
+            text-align: center;
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .method {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .method:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+            transform: scale(1.02);
+        }
+        
+        .method.active {
+            border-color: #667eea;
+            background: #e8f0ff;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .method-name {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 16px;
+        }
+        
+        .method-description {
+            color: #666;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .demo-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .demo-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .log-container {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px 10px;
+            border-radius: 5px;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+        }
+        
+        .log-mounting {
+            background: rgba(40, 167, 69, 0.2);
+            border-left: 3px solid #28a745;
+        }
+        
+        .log-updating {
+            background: rgba(255, 193, 7, 0.2);
+            border-left: 3px solid #ffc107;
+        }
+        
+        .log-unmounting {
+            background: rgba(220, 53, 69, 0.2);
+            border-left: 3px solid #dc3545;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .hook-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .comparison-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+        }
+        
+        .class-section {
+            border-left: 5px solid #dc3545;
+        }
+        
+        .hooks-section {
+            border-left: 5px solid #28a745;
+        }
+        
+        .code-example {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        
+        .highlight {
+            background: #4a5568;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #68d391;
+        }
+        
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+            margin: 20px 0;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, #28a745, #ffc107, #dc3545);
+            transform: translateX(-50%);
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 45%;
+        }
+        
+        .timeline-item:nth-child(odd) {
+            left: 0;
+        }
+        
+        .timeline-item:nth-child(even) {
+            left: 55%;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #667eea;
+            transform: translateY(-50%);
+        }
+        
+        .timeline-item:nth-child(odd)::before {
+            right: -30px;
+        }
+        
+        .timeline-item:nth-child(even)::before {
+            left: -30px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+        
+        .status-mounting {
+            background: #28a745;
+            animation: pulse 1s infinite;
+        }
+        
+        .status-updating {
+            background: #ffc107;
+            animation: pulse 1s infinite;
+        }
+        
+        .status-unmounting {
+            background: #dc3545;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        @media (max-width: 768px) {
+            .lifecycle-diagram {
+                flex-direction: column;
+            }
+            
+            .phase {
+                min-width: auto;
+            }
+            
+            .hook-comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .timeline::before {
+                left: 20px;
+            }
+            
+            .timeline-item {
+                width: calc(100% - 40px);
+                left: 40px !important;
+            }
+            
+            .timeline-item::before {
+                left: -30px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚛️ React Component Lifecycle</h1>
+        
+        <div class="lifecycle-diagram">
+            <div class="phase mounting">
+                <div class="phase-icon">🏗️</div>
+                <h3>Mounting</h3>
+                <div class="method" onclick="showMethodInfo('constructor')">
+                    <div class="method-name">constructor()</div>
+                    <div class="method-description">Initialize state and bind methods</div>
+                </div>
+                <div class="method" onclick="showMethodInfo('componentDidMount')">
+                    <div class="method-name">componentDidMount()</div>
+                    <div class="method-description">Component mounted, DOM available</div>
+                </div>
+            </div>
+            
+            <div class="phase updating">
+                <div class="phase-icon">🔄</div>
+                <h3>Updating</h3>
+                <div class="method" onclick="showMethodInfo('componentDidUpdate')">
+                    <div class="method-name">componentDidUpdate()</div>
+                    <div class="method-description">Component updated, DOM changed</div>
+                </div>
+                <div class="method" onclick="showMethodInfo('getSnapshotBeforeUpdate')">
+                    <div class="method-name">getSnapshotBeforeUpdate()</div>
+                    <div class="method-description">Capture info before DOM updates</div>
+                </div>
+            </div>
+            
+            <div class="phase unmounting">
+                <div class="phase-icon">💀</div>
+                <h3>Unmounting</h3>
+                <div class="method" onclick="showMethodInfo('componentWillUnmount')">
+                    <div class="method-name">componentWillUnmount()</div>
+                    <div class="method-description">Cleanup before component removal</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>🎮 Interactive Lifecycle Demo</h3>
+            <div class="demo-controls">
+                <button onclick="mountComponent()" id="mountBtn">Mount Component</button>
+                <button onclick="updateComponent()" id="updateBtn" disabled>Update Component</button>
+                <button onclick="unmountComponent()" id="unmountBtn" disabled>Unmount Component</button>
+                <button onclick="clearLog()">Clear Log</button>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <span id="componentStatus">Component Status: Not Mounted</span>
+                <span id="statusIndicator"></span>
+            </div>
+            
+            <div class="log-container" id="logContainer">
+                <div style="color: #68d391; margin-bottom: 10px;">📝 Lifecycle Log:</div>
+            </div>
+        </div>
+        
+        <div class="hook-comparison">
+            <div class="comparison-section class-section">
+                <h3>📚 Class Components</h3>
+                <div class="code-example">
+<span class="highlight">class MyComponent extends React.Component {</span>
+  constructor(props) {
+    super(props);
+    this.state = { count: 0 };
+  }
+  
+  <span class="highlight">componentDidMount() {</span>
+    // After component mounts
+    console.log('Component mounted');
+  }
+  
+  <span class="highlight">componentDidUpdate(prevProps, prevState) {</span>
+    // After component updates
+    console.log('Component updated');
+  }
+  
+  <span class="highlight">componentWillUnmount() {</span>
+    // Before component unmounts
+    console.log('Component will unmount');
+  }
+  
+  render() {
+    return &lt;div&gt;Count: {this.state.count}&lt;/div&gt;;
+  }
+}
+                </div>
+            </div>
+            
+            <div class="comparison-section hooks-section">
+                <h3>🪝 Functional Components (Hooks)</h3>
+                <div class="code-example">
+<span class="highlight">function MyComponent() {</span>
+  const [count, setCount] = useState(0);
+  
+  <span class="highlight">useEffect(() => {</span>
+    // componentDidMount
+    console.log('Component mounted');
+    
+    <span class="highlight">return () => {</span>
+      // componentWillUnmount
+      console.log('Component will unmount');
+    };
+  }, []); // Empty dependency array
+  
+  <span class="highlight">useEffect(() => {</span>
+    // componentDidUpdate
+    console.log('Component updated');
+  }, [count]); // Runs when count changes
+  
+  return &lt;div&gt;Count: {count}&lt;/div&gt;;
+}
+                </div>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>📋 Lifecycle Methods Cheat Sheet</h3>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <h4>🏗️ constructor(props)</h4>
+                    <p><strong>When:</strong> Before component mounts</p>
+                    <p><strong>Use for:</strong> Initialize state, bind methods</p>
+                    <p><strong>Don't:</strong> Make API calls, cause side effects</p>
+                </div>
+                
+                <div class="timeline-item">
+                    <h4>🎯 componentDidMount()</h4>
+                    <p><strong>When:</strong> After component mounts</p>
+                    <p><strong>Use for:</strong> API calls, DOM manipulation, timers</p>
+                    <p><strong>Perfect for:</strong> Data fetching, subscriptions</p>
+                </div>
+                
+                <div class="timeline-item">
+                    <h4>🔄 componentDidUpdate(prevProps, prevState)</h4>
+                    <p><strong>When:</strong> After component updates</p>
+                    <p><strong>Use for:</strong> Compare props/state, conditional API calls</p>
+                    <p><strong>Warning:</strong> Always compare with previous values</p>
+                </div>
+                
+                <div class="timeline-item">
+                    <h4>🧹 componentWillUnmount()</h4>
+                    <p><strong>When:</strong> Before component unmounts</p>
+                    <p><strong>Use for:</strong> Cleanup timers, cancel requests, unsubscribe</p>
+                    <p><strong>Critical:</strong> Prevent memory leaks</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let componentMounted = false;
+        let updateCount = 0;
+        
+        function addLogEntry(message, phase) {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${phase}`;
+            entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function updateStatus(status, phase) {
+            const statusElement = document.getElementById('componentStatus');
+            const indicatorElement = document.getElementById('statusIndicator');
+            
+            statusElement.textContent = `Component Status: ${status}`;
+            indicatorElement.className = `status-indicator status-${phase}`;
+        }
+        
+        function updateButtons() {
+            const mountBtn = document.getElementById('mountBtn');
+            const updateBtn = document.getElementById('updateBtn');
+            const unmountBtn = document.getElementById('unmountBtn');
+            
+            mountBtn.disabled = componentMounted;
+            updateBtn.disabled = !componentMounted;
+            unmountBtn.disabled = !componentMounted;
+        }
+        
+        function mountComponent() {
+            if (componentMounted) return;
+            
+            componentMounted = true;
+            updateCount = 0;
+            
+            // Simulate mounting lifecycle
+            setTimeout(() => {
+                addLogEntry('🏗️ constructor() - Component instance created', 'mounting');
+                updateStatus('Mounting...', 'mounting');
+            }, 100);
+            
+            setTimeout(() => {
+                addLogEntry('🎯 componentDidMount() - Component mounted to DOM', 'mounting');
+                updateStatus('Mounted', 'mounting');
+                updateButtons();
+            }, 500);
+        }
+        
+        function updateComponent() {
+            if (!componentMounted) return;
+            
+            updateCount++;
+            updateStatus('Updating...', 'updating');
+            
+            setTimeout(() => {
+                addLogEntry(`🔄 componentDidUpdate() - Component updated (update #${updateCount})`, 'updating');
+                updateStatus('Updated', 'updating');
+            }, 300);
+        }
+        
+        function unmountComponent() {
+            if (!componentMounted) return;
+            
+            updateStatus('Unmounting...', 'unmounting');
+            
+            setTimeout(() => {
+                addLogEntry('🧹 componentWillUnmount() - Cleanup before removal', 'unmounting');
+                setTimeout(() => {
+                    addLogEntry('💀 Component destroyed and removed from DOM', 'unmounting');
+                    componentMounted = false;
+                    updateStatus('Unmounted', 'unmounting');
+                    updateButtons();
+                }, 200);
+            }, 300);
+        }
+        
+        function clearLog() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '<div style="color: #68d391; margin-bottom: 10px;">📝 Lifecycle Log:</div>';
+        }
+        
+        function showMethodInfo(methodName) {
+            // Remove active class from all methods
+            document.querySelectorAll('.method').forEach(method => {
+                method.classList.remove('active');
+            });
+            
+            // Add active class to clicked method
+            event.target.closest('.method').classList.add('active');
+            
+            // Show method info (you can extend this)
+            const methodInfo = {
+                'constructor': 'Initializes component state and binds event handlers',
+                'componentDidMount': 'Called after component mounts - perfect for API calls',
+                'componentDidUpdate': 'Called after component updates - compare with previous props/state',
+                'componentWillUnmount': 'Called before component unmounts - cleanup timers, subscriptions',
+                'getSnapshotBeforeUpdate': 'Capture DOM info before updates - rarely used'
+            };
+            
+            addLogEntry(`ℹ️ ${methodName}: ${methodInfo[methodName]}`, 'mounting');
+        }
+        
+        // Initialize
+        updateButtons();
+        
+        // Auto-demo
+        setTimeout(() => {
+            if (!componentMounted) {
+                addLogEntry('🚀 Starting auto-demo...', 'mounting');
+                setTimeout(mountComponent, 1000);
+                setTimeout(updateComponent, 3000);
+                setTimeout(updateComponent, 5000);
+                setTimeout(unmountComponent, 7000);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
